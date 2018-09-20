@@ -8,41 +8,45 @@ using System.Threading;
 
 namespace CoThread
 {
-    public static class CoThread
+    public class CoThread
     {
-        static CoThread() {
+        static CoThread()
+        {
             ThreadPool.SetMaxThreads(1000, 100);
         }
-        private static int count = 0;
+        #region 单例实现
+        private CoThread()
+        {
+        }
+        /// <summary>
+        /// 线程级缓存
+        /// </summary>
+        [ThreadStatic]
+        private static CoThread _innerThread = new CoThread();
 
-        private static ManualResetEvent resetEvent = new ManualResetEvent(false);
+        public static CoThread GetInstance() { return _innerThread; }
+        #endregion
 
-        public static ConcurrentDictionary<object, object> Map = new ConcurrentDictionary<object, object>();
+        private int count = 0;
 
-        public static ConcurrentQueue<object> Queue = new ConcurrentQueue<object>();
+        private ManualResetEvent resetEvent = new ManualResetEvent(false);
 
-        public static ConcurrentQueue<object> ExceptionQueue = new ConcurrentQueue<object>();
+        private CoData _data = new CoData();
+        public CoData Data { get { return _data; } }
 
-        private static Action<object> GetSwappedAction<T>() {
+        private  Action<object> GetSwappedAction<T>() {
             return p => {
                 CoParam cp = p as CoParam;
                 try
                 {
-                    //todo
-                    if (cp.ParamType == CoParamType.NONE)
-                    {
-                        cp.NoneAction();
-                    }
-                    else {
-                        cp.OneParamAction(cp.OneParamAction);
-                    }
+                    cp.OneParamAction(null);
                     //todo
                 }
                 catch (Exception ex)
                 {
                     CoException cex = new CoException("error", ex);
                     //todo
-                    CoThread.ExceptionQueue.Enqueue(cex);
+                    Data.ExceptionQueue.Enqueue(cex);
                 }
                 finally {
                     if (Interlocked.Decrement(ref count) == 0)
@@ -51,51 +55,51 @@ namespace CoThread
             };
         }
 
-        public static void Add(Action action) {
+        public void Add(Action<CoData> action) {
             if (action == null) return;
             Interlocked.Increment(ref count);
-            ThreadPool.QueueUserWorkItem(new WaitCallback(CoThread.GetSwappedAction<object>()), new CoParam()
+            ThreadPool.QueueUserWorkItem(new WaitCallback(this.GetSwappedAction<object>()), new CoParam()
             {
-                OneParamAction = o=> { action(); },
+                OneParamAction = o=> { action(this.Data); },
                 ParamType = CoParamType.NONE
             });
         }
 
-        public static void Add(Action<dynamic> action,dynamic param ) {
+        public void Add(Action<dynamic, CoData> action,dynamic param ) {
             if (action == null) return;
             Interlocked.Increment(ref count);
-            ThreadPool.QueueUserWorkItem(new WaitCallback(CoThread.GetSwappedAction<dynamic>()), new CoParam()
+            ThreadPool.QueueUserWorkItem(new WaitCallback(this.GetSwappedAction<dynamic>()), new CoParam()
             {
-                OneParamAction = (p => { action(p); }),
+                OneParamAction = (p => { action(p,this.Data); }),
                 ParamType = CoParamType.DYNAMIC,
                 objectParam = param
             });
         }
 
-        public static void Add<T>(Action<T> action, T param)
+        public void Add<T>(Action<T, CoData> action, T param)
         {
             if (action == null) return;
             Interlocked.Increment(ref count);
-            ThreadPool.QueueUserWorkItem(new WaitCallback(CoThread.GetSwappedAction<T>()), new CoParam() {
-                OneParamAction = (p => { action((T)p); }),
+            ThreadPool.QueueUserWorkItem(new WaitCallback(this.GetSwappedAction<T>()), new CoParam() {
+                OneParamAction = (p => { action((T)p,this.Data); }),
                 ParamType = CoParamType.TYPE,
                 objectParam = param
             });
         }
 
-        public static void BatchAdd<T>(Action<T> action, IEnumerable<T> paramList) {
+        public void BatchAdd<T>(Action<T, CoData> action, IEnumerable<T> paramList) {
             if (paramList == null) return;
             foreach (T p in paramList)
                 Add(action, p);
         }
 
-        public static void BatchAdd(Action<dynamic> action, IEnumerable<dynamic> paramList) {
+        public void BatchAdd(Action<dynamic, CoData> action, IEnumerable<dynamic> paramList) {
             if (paramList == null) return;
             foreach (dynamic p in paramList)
                 Add(action, p);
         }
 
-        public static void BatchAdd(Action action, int count) {
+        public void BatchAdd(Action<CoData> action, int count) {
             for (int i = 0; i < count; i++)
                 Add(action);
         }
@@ -103,7 +107,7 @@ namespace CoThread
         /// <summary>
         /// 等待线程执行完
         /// </summary>
-        public static void Wait() {
+        public void Wait() {
             try
             {
                 resetEvent.WaitOne();
@@ -119,9 +123,20 @@ namespace CoThread
             }
         }
 
-        public static void ClearAll() {
-
+        public void ClearAll() {
+            //todo
+            _data = new CoData();
         }
+    }
+
+    public class CoData {
+        public ConcurrentDictionary<object, object> Map = new ConcurrentDictionary<object, object>();
+
+        public ConcurrentQueue<object> Queue = new ConcurrentQueue<object>();
+
+        public ConcurrentQueue<object> ExceptionQueue = new ConcurrentQueue<object>();
+
+        public object Obj { get; set; }
     }
 
     public class CoException : Exception {
@@ -134,7 +149,6 @@ namespace CoThread
         internal CoParamType ParamType { get; set; }
         internal object objectParam { get; set; }
         internal Action<object> OneParamAction { get; set; }
-        internal Action NoneAction { get; set; }
 
     }
 
