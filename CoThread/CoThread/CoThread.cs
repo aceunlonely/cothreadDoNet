@@ -37,7 +37,7 @@ namespace CoThread
         private CoData _data = new CoData();
         public CoData Data { get { return _data; } }
 
-        private  Action<object> GetSwappedAction<T>() {
+        private  CoAction<object> GetSwappedAction<T>() {
             return p => {
                 CoParam cp = p as CoParam;
                 try
@@ -58,7 +58,7 @@ namespace CoThread
             };
         }
 
-        public void Add(Action<CoData> action) {
+        public void Add(CoAction<CoData> action) {
             if (action == null) return;
             Interlocked.Increment(ref count);
             ThreadPool.QueueUserWorkItem(new WaitCallback(this.GetSwappedAction<object>()), new CoParam()
@@ -68,7 +68,7 @@ namespace CoThread
             });
         }
 
-        public void Add(Action<dynamic, CoData> action,dynamic param ) {
+        public void Add(CoAction<dynamic, CoData> action,dynamic param ) {
             if (action == null) return;
             Interlocked.Increment(ref count);
             ThreadPool.QueueUserWorkItem(new WaitCallback(this.GetSwappedAction<dynamic>()), new CoParam()
@@ -79,7 +79,7 @@ namespace CoThread
             });
         }
 
-        public void Add<T>(Action<T, CoData> action, T param)
+        public void Add<T>(CoAction<T, CoData> action, T param)
         {
             if (action == null) return;
             Interlocked.Increment(ref count);
@@ -90,19 +90,19 @@ namespace CoThread
             });
         }
 
-        public void BatchAdd<T>(Action<T, CoData> action, IEnumerable<T> paramList) {
+        public void BatchAdd<T>(CoAction<T, CoData> action, IEnumerable<T> paramList) {
             if (paramList == null) return;
             foreach (T p in paramList)
                 Add(action, p);
         }
 
-        public void BatchAdd(Action<dynamic, CoData> action, IEnumerable<dynamic> paramList) {
+        public void BatchAdd(CoAction<dynamic, CoData> action, IEnumerable<dynamic> paramList) {
             if (paramList == null) return;
             foreach (dynamic p in paramList)
                 Add(action, p);
         }
 
-        public void BatchAdd(Action<CoData> action, int count) {
+        public void BatchAdd(CoAction<CoData> action, int count) {
             for (int i = 0; i < count; i++)
                 Add(action);
         }
@@ -149,7 +149,7 @@ namespace CoThread
     class CoParam {
         internal CoParamType ParamType { get; set; }
         internal object objectParam { get; set; }
-        internal Action<object> OneParamAction { get; set; }
+        internal CoAction<object> OneParamAction { get; set; }
     }
 
     enum CoParamType {
@@ -157,4 +157,8 @@ namespace CoThread
         DYNAMIC =2,
         TYPE =3
     }
+
+    public delegate void CoAction<in T>(T obj);
+    public delegate void CoAction<in T1, in T2>(T1 arg1, T2 arg2);
+
 }
