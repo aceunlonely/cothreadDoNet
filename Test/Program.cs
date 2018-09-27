@@ -9,8 +9,8 @@ namespace Test
         {
             Console.WriteLine("hello good day");
             //TestEasyAction();
-            //TestEasyActionT();
-            TestMutiThread();
+            TestEasyActionT();
+            //TestMutiThread();
             Console.Read();
         }
 
@@ -80,6 +80,8 @@ namespace Test
                 }, new T1() { P1="test" ,P2 = i});
             }
             //等待全部走完
+            th.Wait();
+            th.Wait();
             th.Wait();
             // th.Data.ExceptionQueue.Count 
             if (th.Data.Map.Count == 100)

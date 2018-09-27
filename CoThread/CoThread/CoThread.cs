@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace CoThread
 {
-    public class CoThread
+    public class CoThread : IDisposable
     {
         static CoThread()
         {
@@ -58,6 +58,15 @@ namespace CoThread
             };
         }
 
+        /// <summary>
+        /// ss
+        /// </summary>
+        /// <example>
+        ///     nothing
+        /// </example>
+        /// <![CDATA[ aa]]>
+        /// <remarks>sdfsd </remarks>
+        /// <param name="action">ss</param>
         public void Add(CoAction<CoData> action) {
             if (action == null) return;
             Interlocked.Increment(ref count);
@@ -113,7 +122,8 @@ namespace CoThread
         public void Wait() {
             try
             {
-                resetEvent.WaitOne();
+                if(count!=0)
+                    resetEvent.WaitOne();
             }
             catch (Exception ex)
             {
@@ -129,6 +139,11 @@ namespace CoThread
         public void ClearAll() {
             //todo
             _data = new CoData();
+        }
+
+        public void Dispose()
+        {
+            Wait();
         }
     }
 
