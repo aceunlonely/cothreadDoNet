@@ -14,7 +14,7 @@ namespace CoThread
         {
             ThreadPool.SetMaxThreads(1000, 100);
         }
-        #region 单例实现
+        #region 实例化实现
         private CoThread()
         {
         }
@@ -24,7 +24,10 @@ namespace CoThread
         [ThreadStatic]
         private static CoThread _innerThread = new CoThread();
 
-        public static CoThread GetInstance() { return _innerThread; }
+        public static CoThread GetInstance() {
+            return new CoThread();
+            //return _innerThread;
+        }
         #endregion
 
         private int count = 0;
@@ -70,7 +73,7 @@ namespace CoThread
             Interlocked.Increment(ref count);
             ThreadPool.QueueUserWorkItem(new WaitCallback(this.GetSwappedAction<dynamic>()), new CoParam()
             {
-                OneParamAction = (p => { action(p,this.Data); }),
+                OneParamAction = (p => { action(param, this.Data); }),
                 ParamType = CoParamType.DYNAMIC,
                 objectParam = param
             });
@@ -81,7 +84,7 @@ namespace CoThread
             if (action == null) return;
             Interlocked.Increment(ref count);
             ThreadPool.QueueUserWorkItem(new WaitCallback(this.GetSwappedAction<T>()), new CoParam() {
-                OneParamAction = (p => { action((T)p,this.Data); }),
+                OneParamAction = (p => { action((T)param, this.Data); }),
                 ParamType = CoParamType.TYPE,
                 objectParam = param
             });
@@ -135,8 +138,6 @@ namespace CoThread
         public ConcurrentQueue<object> Queue = new ConcurrentQueue<object>();
 
         public ConcurrentQueue<object> ExceptionQueue = new ConcurrentQueue<object>();
-
-        public object Obj { get; set; }
     }
 
     public class CoException : Exception {
@@ -149,7 +150,6 @@ namespace CoThread
         internal CoParamType ParamType { get; set; }
         internal object objectParam { get; set; }
         internal Action<object> OneParamAction { get; set; }
-
     }
 
     enum CoParamType {
